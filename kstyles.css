@@ -1,5 +1,6 @@
 /* 기본 설정 */
 @import url('https://fonts.googleapis.com/css2?family=Diphylleia&family=Dongle:wght@300&family=Gamja+Flower&family=Gowun+Dodum&display=swap');
+
 * {
     margin: 0;
     padding: 0;
@@ -299,6 +300,11 @@ footer .social-links img {
 
 footer .social-links a:hover img {
     filter: invert(70%) sepia(100%) saturate(500%) hue-rotate(330deg);
+}
+
+/* 모든 버튼에 Diphylleia 폰트 적용 */
+button, .btn {
+    font-family: "Diphylleia", serif;
 }
 
 /* 반응형 디자인 */
