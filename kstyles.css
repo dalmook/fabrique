@@ -1,0 +1,333 @@
+/* 기본 설정 */
+@import url('https://fonts.googleapis.com/css2?family=Diphylleia&family=Dongle:wght@300&family=Gamja+Flower&family=Gowun+Dodum&display=swap');
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Diphylleia", serif;
+    line-height: 1.6;
+    color: #333;
+    padding-top: 100px; /* 헤더 높이에 맞게 조정 */
+}
+
+/* 헤더 스타일 */
+header {
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: fixed; /* 헤더를 고정 위치로 설정 */
+    top: 0;          /* 화면 상단에 위치 */
+    left: 0;         /* 화면 좌측에 위치 */
+    width: 100%;     /* 전체 너비를 차지 */
+    z-index: 1000;   /* 다른 요소들보다 위에 표시 */
+    display: flex;   /* Flexbox로 레이아웃 설정 */
+    align-items: center; /* 수직 정렬 */
+    justify-content: space-between; /* 좌우 공간 분배 */
+    padding: 10px 0; /* 상하 패딩 */
+}
+
+/* 컨테이너 내부의 요소들이 헤더 내부에서 올바르게 정렬되도록 */
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* 헤더 내부의 좌우 요소 배치 */
+}
+
+/* 로고와 제목을 포함한 컨테이너 */
+.logo-title-container {
+    display: flex; /* Flexbox로 로고와 제목을 한 줄에 배치 */
+    align-items: center; /* 수직 정렬 */
+    gap: 15px; /* 로고와 제목 사이 간격 */
+}
+
+/* 로고 스타일 */
+.logo img {
+    height: 70px; /* 로고 크기 */
+    width: auto; /* 비율 유지 */
+}
+
+/* 제목 스타일 */
+.site-title {
+    font-size: 2.5rem; /* 제목 크기 */
+    font-family: "Diphylleia", serif;
+    color: #111;
+    margin: 0; /* Flexbox로 정렬하므로 추가 간격 제거 */
+    text-align: center;
+}
+
+/* 헤딩에 Playfair Display 폰트 적용 */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+    color: #111;
+}
+
+/* 헤더 네비게이션 */
+header nav ul {
+    list-style: none;
+    display: flex;
+    gap: 20px; /* 네비게이션 항목 사이 간격 */
+}
+
+header nav ul li a {
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+    transition: color 0.3s ease;
+    font-family: "Diphylleia", serif;
+}
+
+header nav ul li a:hover {
+    color: #e91e63;
+}
+
+/* 히어로 섹션 */
+.hero {
+    background: url('D:/Multimedia/kbeauty.webp') no-repeat center center/cover;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #fff;
+    padding-top: 80px; /* 헤더 높이 보정 */
+}
+
+.hero h1 {
+    font-size: 2.5rem;
+    font-family: "Diphylleia", serif;
+    margin-bottom: 20px;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    font-family: "Diphylleia", serif;
+    margin-bottom: 30px;
+}
+
+.hero .btn {
+    padding: 10px 30px;
+    background: #e91e63;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 1rem;
+    font-family: "Diphylleia", serif;
+    border-radius: 5px;
+    transition: background 0.3s ease;
+}
+
+.hero .btn:hover {
+    background: #d81b60;
+}
+
+/* 제품 섹션 */
+.products {
+    padding: 100px 0;
+    background: #f9f9f9;
+}
+
+.products h2 {
+    text-align: center;
+    margin-bottom: 50px;
+    font-size: 2.5rem;
+    color: #333;
+    font-family: "Diphylleia", serif;
+}
+
+.product-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+.product-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 20px;
+    width: 300px;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    font-family: "Diphylleia", serif;
+}
+
+.product-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.product-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.product-card h3 {
+    margin: 15px 0 10px;
+    font-size: 1.5rem;
+    color: #333;
+    font-family: "Diphylleia", serif;
+}
+
+.product-card p {
+    font-size: 1rem;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.product-card .price {
+    font-size: 1.2rem;
+    color: #e91e63;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.product-card .btn {
+    padding: 10px 20px;
+    background: #e91e63;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 1rem;
+    font-family: "Diphylleia", serif;
+    border-radius: 5px;
+    transition: background 0.3s ease;
+}
+
+.product-card .btn:hover {
+    background: #d81b60;
+}
+
+/* 브랜드 소개 섹션 */
+.about {
+    padding: 80px 0;
+    text-align: center;
+    font-family: "Diphylleia", serif;
+}
+
+.about h2 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    color: #333;
+    font-family: "Diphylleia", serif;
+}
+
+.about p {
+    font-size: 1.1rem;
+    color: #555;
+    max-width: 800px;
+    margin: auto;
+}
+
+/* 문의 섹션 */
+.contact {
+    padding: 80px 0;
+    background: #f9f9f9;
+    text-align: center;
+    font-family: "Diphylleia", serif;
+}
+
+.contact h2 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    color: #333;
+    font-family: "Diphylleia", serif;
+}
+
+#contact-form {
+    max-width: 600px;
+    margin: auto;
+}
+
+#contact-form input,
+#contact-form textarea {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-family: "Diphylleia", serif;
+}
+
+#contact-form .btn {
+    width: 100%;
+    padding: 15px;
+    background: #e91e63;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    font-family: "Diphylleia", serif;
+    border-radius: 5px;
+    transition: background 0.3s ease;
+}
+
+#contact-form .btn:hover {
+    background: #d81b60;
+}
+
+/* 푸터 */
+footer {
+    background: #333;
+    color: #fff;
+    padding: 20px 0;
+    text-align: center;
+    font-family: "Diphylleia", serif;
+}
+
+footer .social-links a {
+    display: inline-block;
+    margin: 0 10px;
+}
+
+footer .social-links img {
+    width: 24px;
+    height: 24px;
+    filter: invert(100%);
+    transition: filter 0.3s ease;
+}
+
+footer .social-links a:hover img {
+    filter: invert(70%) sepia(100%) saturate(500%) hue-rotate(330deg);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .logo-title-container {
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+
+    header nav ul {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .hero p {
+        font-size: 1rem;
+    }
+
+    .product-grid {
+        flex-direction: column;
+        align-items: center;
+    }
+}
