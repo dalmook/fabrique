@@ -87,7 +87,7 @@ header nav ul li a:hover {
 
 /* 히어로 섹션 */
 .hero {
-    background: url('D:/Multimedia/kbeauty.webp') no-repeat center center/cover;
+    background: url('images/kbeauty.webp') no-repeat center center/cover;
     height: 100vh;
     display: flex;
     align-items: center;
