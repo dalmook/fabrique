@@ -26,23 +26,23 @@ def extract_text():
             return
 
         extracted_texts = []
-        for element in elements:
-            text = element.get_text(strip=True)
-            line = f"텍스트: {text}"
+        for idx, element in enumerate(elements, start=1):
+            text = element.get_text(separator=' ', strip=True)
+            line = f"요소 {idx} 텍스트: {text}"
             
             if extract_links:
-                # `a` 태그의 `href` 속성 추출
-                a_tag = element.find('a', href=True)
-                if a_tag:
-                    href = a_tag['href']
-                    line += f" | 링크: {href}"
+                # 모든 a 태그의 href 속성 추출
+                a_tags = element.find_all('a', href=True)
+                if a_tags:
+                    links = ", ".join([a['href'] for a in a_tags])
+                    line += f" | 링크: {links}"
             
             if extract_images:
-                # `img` 태그의 `src` 속성 추출
-                img_tag = element.find('img', src=True)
-                if img_tag:
-                    src = img_tag['src']
-                    line += f" | 이미지 경로: {src}"
+                # 모든 img 태그의 src 속성 추출
+                img_tags = element.find_all('img', src=True)
+                if img_tags:
+                    images = ", ".join([img['src'] for img in img_tags])
+                    line += f" | 이미지 경로: {images}"
             
             extracted_texts.append(line)
         
@@ -72,7 +72,7 @@ def save_text():
 # Tkinter 창 설정
 root = tk.Tk()
 root.title("HTML 텍스트 추출기")
-root.geometry("800x700")
+root.geometry("800x750")
 
 # HTML 내용 입력 섹션
 html_frame = tk.LabelFrame(root, text="HTML 내용 붙여넣기")
@@ -118,7 +118,7 @@ extract_button.pack(pady=10)
 result_frame = tk.LabelFrame(root, text="추출된 텍스트")
 result_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-result_text = scrolledtext.ScrolledText(result_frame, wrap=tk.WORD, height=10, fg="green")
+result_text = scrolledtext.ScrolledText(result_frame, wrap=tk.WORD, height=15, fg="green")
 result_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
 # 저장 버튼
