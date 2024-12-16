@@ -6,29 +6,29 @@ import os
 from datetime import datetime
 from typing import List, Any
 import uvicorn
+
 app = FastAPI()
-# JSON 저장 경로 설정 (절대경로 사용)
+
+# JSON 저장 경로 설정 (절대경로)
 SAVE_PATH = r"C:\Workspace\saved_json"
 os.makedirs(SAVE_PATH, exist_ok=True)
+
 # CORS 설정 (필요 시)
 from fastapi.middleware.cors import CORSMiddleware
-# CORS 설정
-origins = [
-    "http://12.52.146.94:7000",
-    "http://127.0.0.1:7000",
-]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # 개발 중에는 "*"로 설정 가능, 프로덕션에서는 특정 출처로 제한
+    allow_origins=["*"],  # 필요한 도메인으로 제한 가능
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# 데이터 형식을 지정하는 Pydantic 모델
+
+# 데이터 형식을 지정하는 모델 정의
 class DataModel(BaseModel):
     headers: List[str]
     data: List[List[Any]]
+
 # HTML로 웹 페이지 제공
 @app.get("/", response_class=HTMLResponse)
 async def get_excel_page():
@@ -37,9 +37,9 @@ async def get_excel_page():
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Tabulator JSON Saver</title>
-        <!-- Tabulator CSS CDN 링크 -->
-        <link href="https://unpkg.com/tabulator-tables@5.4.4/dist/css/tabulator.min.css" rel="stylesheet">
+        <title>Excel-like JSON Saver</title>
+        <script src="https://cdn.jsdelivr.net/npm/handsontable@8.0.0/dist/handsontable.full.min.js"></script>
+        <link href="https://cdn.jsdelivr.net/npm/handsontable@8.0.0/dist/handsontable.full.min.css" rel="stylesheet">
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -79,49 +79,51 @@ async def get_excel_page():
             <h3>웹 Excel 형태 - JSON 저장 및 불러오기</h3>
             <div id="buttonGroup">
                 <input type="text" id="filenameInput" placeholder="파일 이름 입력 (선택)">
-                <button ON-CLICK="saveData()">저장</button>
+                <button onclick="saveData()">저장</button>
                 <select id="jsonFiles">
                     <option value="">-- 파일 선택 --</option>
                 </select>
-                <button ON-CLICK="loadData()">불러오기</button>
+                <button onclick="loadData()">불러오기</button>
             </div>
         </div>
         
         <div id="controls">
-            <button ON-CLICK="addRow()">행 추가</button>
-            <button ON-CLICK="addColumn()">열 추가</button>
+            <button onclick="addRow()">행 추가</button>
+            <button onclick="addColumn()">열 추가</button>
         </div>
         
         <div id="excel"></div>
-        
-        <!-- Tabulator JS CDN 링크 -->
-        <script src="https://unpkg.com/tabulator-tables@5.4.4/dist/js/tabulator.min.js"></script>
         <script>
-            // Tabulator 테이블 초기화
-            let table = new Tabulator("#excel", {
-                data: [], // 초기 데이터 빈 배열
-                layout:"fitColumns",
-                responsiveLayout:"hide",
-                addRowPos:"top",
-                history:true,
-                pagination:"local",
-                paginationSize:10,
-                movableColumns:true,
-                resizableRows:true,
-                columnSorting:true,
-                columns:[
-                    {title:"A", field:"A", editor:"input"},
-                    {title:"B", field:"B", editor:"input"},
-                    {title:"C", field:"C", editor:"input"},
-                ],
-                cellEdited:function(cell){
-                    // 셀이 편집될 때마다 호출됩니다. 필요 시 추가 기능 구현 가능
-                },
+            const container = document.getElementById('excel');
+            let hot = new Handsontable(container, {
+                data: Handsontable.helper.createSpreadsheetData(5, 3),  // 초기 행과 열을 최소화
+                rowHeaders: true,
+                colHeaders: true,  // 기본 열 헤더 사용
+                licenseKey: 'non-commercial-and-evaluation',
+                contextMenu: true,  // 컨텍스트 메뉴 활성화
+                minRows: 1,
+                minCols: 1,
+                manualColumnResize: true,
+                manualRowResize: true,
+                columnSorting: true,
+                // 열 헤더를 직접 편집할 수 있도록 설정
+                afterGetColHeader: function(col, TH) {
+                    // 열 헤더를 더블 클릭하면 편집 모드로 전환
+                    TH.style.cursor = 'pointer';
+                    TH.addEventListener('dblclick', function() {
+                        const newName = prompt("새 열 이름을 입력하세요:", hot.getColHeader(col));
+                        if (newName !== null && newName.trim() !== "") {
+                            hot.setColHeader(col, newName.trim());
+                        }
+                    });
+                }
             });
+
             // 페이지 로드 시 JSON 파일 목록 가져오기
-            window.ON-LOAD = async function() {
+            window.onload = async function() {
                 await fetchJsonFileList();
             };
+
             async function fetchJsonFileList() {
                 try {
                     const response = await fetch("/list_json");
@@ -141,12 +143,16 @@ async def get_excel_page():
             }
             
             async function saveData() {
-                const headers = table.getColumns().map(col => col.getDefinition().title);
-                const data = table.getData();  // Tabulator의 데이터 가져오기
+                const colCount = hot.countCols();
+                const headers = [];
+                for (let i = 0; i < colCount; i++) {
+                    headers.push(hot.getColHeader(i));
+                }
+                const data = hot.getData();
+
                 const payload = { headers, data };
                 const filenameInput = document.getElementById("filenameInput").value.trim();
                 const url = filenameInput ? `/save?filename=${encodeURIComponent(filenameInput)}` : "/save";
-                
                 try {
                     const response = await fetch(url, {
                         method: "POST",
@@ -172,6 +178,7 @@ async def get_excel_page():
                     alert("저장에 실패했습니다. 다시 시도해 주세요.");
                 }
             }
+
             async function loadData() {
                 const select = document.getElementById('jsonFiles');
                 const filename = select.value;
@@ -188,17 +195,9 @@ async def get_excel_page():
                             return;
                         }
                         const headers = Object.keys(list_of_dicts[0]);
-                        const data = list_of_dicts.map(obj => {
-                            let row = {};
-                            headers.forEach(header => {
-                                row[header] = obj[header];
-                            });
-                            return row;
-                        });
-                        // Tabulator의 열 헤더 설정
-                        table.setColumns(headers.map(header => ({title: header, field: header, editor: "input"})));
-                        // Tabulator에 데이터 로드
-                        table.setData(data);
+                        const data = list_of_dicts.map(obj => headers.map(header => obj[header]));
+                        setHeaders(headers);
+                        hot.loadData(data);
                         alert("데이터를 성공적으로 불러왔습니다.");
                     } else {
                         alert("파일을 불러오는 데 실패했습니다.");
@@ -208,20 +207,30 @@ async def get_excel_page():
                     alert("파일을 불러오는 데 실패했습니다.");
                 }
             }
+
             function addRow() {
-                table.addRow({});
+                hot.alter('insert_row');
             }
             function addColumn() {
-                const currentColCount = table.getColumns().length;
-                const newColTitle = `Column ${currentColCount + 1}`;
-                const newField = `Col${currentColCount + 1}`;
-                table.addColumn({title: newColTitle, field: newField, editor: "input"});
+                const currentColCount = hot.countCols();
+                hot.alter('insert_col');
+                // Handsontable의 colHeaders를 업데이트 (자동으로 생성)
+                hot.updateSettings({
+                    colHeaders: hot.getColHeader()
+                });
+            }
+
+            function setHeaders(headers) {
+                // Handsontable의 열 헤더를 설정
+                hot.updateSettings({
+                    colHeaders: headers
+                });
             }
         </script>
     </body>
     </html>
     """
-    return HTMLResponse(content=html_content)
+    return HTMLResponse(content=html_content)      
 # JSON으로 저장 엔드포인트
 @app.post("/save")
 async def save_data(data_model: DataModel, filename: str = Query(None)):
@@ -247,6 +256,7 @@ async def save_data(data_model: DataModel, filename: str = Query(None)):
     # 저장된 파일 링크 생성
     file_link = f"/json/{filename}"
     return JSONResponse(content={"link": file_link})
+
 # JSON 파일 접근용 엔드포인트
 @app.get("/json/{filename}")
 async def get_json(filename: str):
@@ -256,12 +266,18 @@ async def get_json(filename: str):
             data = json.load(f)  # [{}, {}, {}]
         return JSONResponse(content=data)
     return JSONResponse(content={"error": "파일을 찾을 수 없습니다."}, status_code=404)
+
 # JSON 파일 목록 제공 엔드포인트
 @app.get("/list_json")
 async def list_json_files():
     files = [f for f in os.listdir(SAVE_PATH) if f.endswith('.json')]
     return JSONResponse(content=files)
+
 # 실행 명령
-# 터미널에서 실행: uvicorn main:app --reload --host 0.0.0.0 --port 7000
+# 터미널에서 실행: uvicorn exceltoweb:app --reload --host 12.52.147.157 --port 7000
+
+
+# 실행 명령
+# uvicorn main:app --reload --host 0.0.0.0 --port 7000
 if __name__ == "__main__":
-    uvicorn.run("exceltoweb:app", host="12.52.146.94", port=7000)  # 포트 번호 5000으로 변경
+    uvicorn.run("exceltoweb:app", host="12.52.146.94", port=7000)                              
