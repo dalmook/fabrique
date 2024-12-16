@@ -1,72 +1,17 @@
-from fastapi import FastAPI, Query, HTTPException, Depends
+from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
+import json
+import os
 from datetime import datetime
 from typing import List, Any
 import uvicorn
-from pathlib import Path
-
-from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session, relationship
 
 app = FastAPI()
 
-# 데이터베이스 파일의 절대 경로 설정 (Windows 예시)
-db_directory = Path("C:/Python").resolve()
-db_directory.mkdir(parents=True, exist_ok=True)  # 디렉토리 없으면 생성
-db_path = db_directory / "saved_data.db"
-
-# SQLAlchemy용 SQLite URL 생성
-DATABASE_URL = f"sqlite:///{db_path}"
-
-# SQLite 데이터베이스 설정
-engine = create_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False}  # SQLite는 기본적으로 스레드 안전하지 않음
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-# 데이터베이스 모델 정의
-class SavedData(Base):
-    __tablename__ = "saved_data"
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True, nullable=False)
-    
-    rows = relationship("DataRow", back_populates="saved_data", cascade="all, delete-orphan")
-
-class DataRow(Base):
-    __tablename__ = "data_row"
-    id = Column(Integer, primary_key=True, index=True)
-    saved_data_id = Column(Integer, ForeignKey("saved_data.id"), nullable=False)
-    row_number = Column(Integer, nullable=False)
-    
-    saved_data = relationship("SavedData", back_populates="rows")
-    cells = relationship("DataCell", back_populates="data_row", cascade="all, delete-orphan")
-    
-    __table_args__ = (UniqueConstraint('saved_data_id', 'row_number', name='_saveddata_row_uc'),)
-
-class DataCell(Base):
-    __tablename__ = "data_cell"
-    id = Column(Integer, primary_key=True, index=True)
-    data_row_id = Column(Integer, ForeignKey("data_row.id"), nullable=False)
-    column_name = Column(String, nullable=False)
-    value = Column(String, nullable=True)
-    
-    data_row = relationship("DataRow", back_populates="cells")
-    
-    __table_args__ = (UniqueConstraint('data_row_id', 'column_name', name='_datarow_column_uc'),)
-
-# 데이터베이스 생성
-Base.metadata.create_all(bind=engine)
-
-# 종속성: 데이터베이스 세션 제공
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# JSON 저장 경로 설정 (절대경로)
+SAVE_PATH = r"c:\Workspace\saved_json"
+os.makedirs(SAVE_PATH, exist_ok=True)
 
 # CORS 설정 (필요 시)
 from fastapi.middleware.cors import CORSMiddleware
@@ -79,7 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 데이터 형식을 지정하는 Pydantic 모델
+# 데이터 형식을 지정하는 모델 정의
 class DataModel(BaseModel):
     headers: List[str]
     data: List[List[Any]]
@@ -92,7 +37,7 @@ async def get_excel_page():
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Excel-like DB Saver</title>
+        <title>Excel-like JSON Saver</title>
         <script src="https://cdn.jsdelivr.net/npm/handsontable@8.0.0/dist/handsontable.full.min.js"></script>
         <link href="https://cdn.jsdelivr.net/npm/handsontable@8.0.0/dist/handsontable.full.min.css" rel="stylesheet">
         <style>
@@ -131,7 +76,7 @@ async def get_excel_page():
     </head>
     <body>
         <div id="header">
-            <h3>웹 Excel 형태 - DB 저장 및 불러오기</h3>
+            <h3>웹 Excel 형태 - JSON 저장 및 불러오기</h3>
             <div id="buttonGroup">
                 <input type="text" id="filenameInput" placeholder="파일 이름 입력 (선택)">
                 <button onclick="saveData()">저장</button>
@@ -174,10 +119,21 @@ async def get_excel_page():
                 }
             });
 
-            // 페이지 로드 시 JSON 파일 목록 가져오기
+            // 페이지 로드 시 JSON 파일 목록 가져오기 및 담당자.json 자동 로드
             window.onload = async function() {
                 await fetchJsonFileList();
+                await loadDefaultFile();
             };
+            
+            async function loadDefaultFile() {
+                const defaultFilename = "담당자.json";
+                const select = document.getElementById('jsonFiles');
+                const options = Array.from(select.options).map(option => option.value);
+                if (options.includes(defaultFilename)) {
+                    select.value = defaultFilename;
+                    await loadData();
+                }
+            }
 
             async function fetchJsonFileList() {
                 try {
@@ -242,11 +198,15 @@ async def get_excel_page():
                     return;
                 }
                 try {
-                    const response = await fetch(`/data/${filename}`);
+                    const response = await fetch(`/json/${filename}`);
                     if (response.ok) {
-                        const result = await response.json();
-                        const headers = result.headers;
-                        const data = result.data.map(row => headers.map(header => row[header]));
+                        const list_of_dicts = await response.json();
+                        if (list_of_dicts.length === 0) {
+                            alert("빈 파일입니다.");
+                            return;
+                        }
+                        const headers = Object.keys(list_of_dicts[0]);
+                        const data = list_of_dicts.map(obj => headers.map(header => obj[header]));
                         setHeaders(headers);
                         hot.loadData(data);
                         alert("데이터를 성공적으로 불러왔습니다.");
@@ -282,14 +242,9 @@ async def get_excel_page():
     </html>
     """
     return HTMLResponse(content=html_content)      
-
-# 데이터베이스에 데이터 저장 엔드포인트
+# JSON으로 저장 엔드포인트
 @app.post("/save")
-async def save_data(
-    data_model: DataModel,
-    filename: str = Query(None),
-    db: Session = Depends(get_db)
-):
+async def save_data(data_model: DataModel, filename: str = Query(None)):
     # 파일 이름이 지정되지 않은 경우 기본 파일 이름 생성
     if not filename:
         filename = f"data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -298,111 +253,42 @@ async def save_data(
         if not filename.endswith('.json'):
             filename = f"{filename}.json"
     
-    # SavedData 엔트리 가져오기 또는 새로 생성
-    saved_data = db.query(SavedData).filter(SavedData.name == filename).first()
-    if not saved_data:
-        saved_data = SavedData(name=filename)
-        db.add(saved_data)
-        db.commit()
-        db.refresh(saved_data)
+    file_path = os.path.join(SAVE_PATH, filename)
     
-    # 기존 행 삭제 (업데이트 용도)
-    db.query(DataRow).filter(DataRow.saved_data_id == saved_data.id).delete()
-    db.commit()
+    # headers와 data를 [{}, {}, {}] 형식으로 변환
+    headers = data_model.headers
+    data = data_model.data
+    list_of_dicts = [dict(zip(headers, row)) for row in data]
     
-    # headers와 data를 데이터베이스에 저장
-    for row_idx, row in enumerate(data_model.data, start=1):
-        data_row = DataRow(saved_data_id=saved_data.id, row_number=row_idx)
-        db.add(data_row)
-        db.commit()
-        db.refresh(data_row)
-        
-        for col_idx, cell in enumerate(row):
-            if col_idx < len(data_model.headers):
-                column_name = data_model.headers[col_idx]
-            else:
-                column_name = f"Column{col_idx + 1}"
-            
-            data_cell = DataCell(
-                data_row_id=data_row.id,
-                column_name=column_name,
-                value=str(cell) if cell is not None else ""
-            )
-            db.add(data_cell)
-        db.commit()
+    # 파일 저장
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(list_of_dicts, f, ensure_ascii=False, indent=2)
     
     # 저장된 파일 링크 생성
-    file_link = f"/data/{filename}"
+    file_link = f"/json/{filename}"
     return JSONResponse(content={"link": file_link})
 
-# 특정 파일의 데이터 조회 엔드포인트
-@app.get("/data/{filename}", response_class=JSONResponse)
-async def get_data_detail(
-    filename: str,
-    db: Session = Depends(get_db)
-):
-    """
-    특정 파일 이름에 해당하는 데이터 세트를 조회합니다.
-    """
-    saved_data = db.query(SavedData).filter(SavedData.name == filename).first()
-    if not saved_data:
-        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
-    
-    # 모든 행과 셀을 조회
-    rows = db.query(DataRow).filter(DataRow.saved_data_id == saved_data.id).order_by(DataRow.row_number).all()
-    
-    headers_set = set()
-    data = []
-    for row in rows:
-        row_data = {}
-        for cell in row.cells:
-            row_data[cell.column_name] = cell.value
-            headers_set.add(cell.column_name)
-        data.append(row_data)
-    
-    headers = sorted(list(headers_set))  # 일관된 순서를 위해 정렬
-    return {"headers": headers, "data": data}
+# JSON 파일 접근용 엔드포인트
+@app.get("/json/{filename}")
+async def get_json(filename: str):
+    file_path = os.path.join(SAVE_PATH, filename)
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)  # [{}, {}, {}]
+        return JSONResponse(content=data)
+    return JSONResponse(content={"error": "파일을 찾을 수 없습니다."}, status_code=404)
 
 # JSON 파일 목록 제공 엔드포인트
-@app.get("/list_json", response_class=JSONResponse)
-async def list_json_files(db: Session = Depends(get_db)):
-    files = db.query(SavedData.name).all()
-    file_list = [file[0] for file in files]
-    return file_list
-
-# 전체 데이터 목록 조회 엔드포인트 추가
-@app.get("/all_data", response_class=JSONResponse)
-async def get_all_data(db: Session = Depends(get_db)):
-    """
-    데이터베이스에 저장된 모든 데이터 세트를 조회합니다.
-    """
-    saved_data_entries = db.query(SavedData).all()
-    result = []
-    for entry in saved_data_entries:
-        # 각 데이터 세트의 헤더와 데이터를 가져오기
-        rows = db.query(DataRow).filter(DataRow.saved_data_id == entry.id).order_by(DataRow.row_number).all()
-        
-        headers_set = set()
-        data = []
-        for row in rows:
-            row_data = {}
-            for cell in row.cells:
-                row_data[cell.column_name] = cell.value
-                headers_set.add(cell.column_name)
-            data.append(row_data)
-        
-        headers = sorted(list(headers_set))  # 일관된 순서를 위해 정렬
-        
-        result.append({
-            "id": entry.id,
-            "name": entry.name,
-            "headers": headers,
-            "data": data
-        })
-    return result
+@app.get("/list_json")
+async def list_json_files():
+    files = [f for f in os.listdir(SAVE_PATH) if f.endswith('.json')]
+    return JSONResponse(content=files)
 
 # 실행 명령
-# 터미널에서 실행: uvicorn exceltoweb:app --reload --host 12.52.146.94 --port 7000
+# 터미널에서 실행: uvicorn exceltoweb:app --reload --host 12.52.147.157 --port 7000
 
+
+# 실행 명령
+# uvicorn main:app --reload --host 0.0.0.0 --port 7000
 if __name__ == "__main__":
-    uvicorn.run("exceltoweb:app", host="12.52.146.94", port=7000)
+    uvicorn.run("exceltoweb:app", host="12.52.146.94", port=7000)                              
