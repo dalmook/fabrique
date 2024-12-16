@@ -1,0 +1,187 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Tabulator JSON Saver</title>
+        <!-- Tabulator CSS CDN 링크 -->
+        <link href="https://unpkg.com/tabulator-tables@5.4.4/dist/css/tabulator.min.css" rel="stylesheet">
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+            }
+            #header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+            }
+            #buttonGroup {
+                display: flex;
+                align-items: center;
+            }
+            #buttonGroup button, #buttonGroup select, #buttonGroup input[type="text"] {
+                margin-left: 10px;
+                padding: 5px 10px;
+                font-size: 14px;
+            }
+            #controls {
+                margin-bottom: 10px;
+            }
+            #controls button {
+                margin-right: 10px;
+                padding: 5px 10px;
+                font-size: 14px;
+            }
+            #excel {
+                width: 100%;
+                height: 400px;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="header">
+            <h3>웹 Excel 형태 - JSON 저장 및 불러오기</h3>
+            <div id="buttonGroup">
+                <input type="text" id="filenameInput" placeholder="파일 이름 입력 (선택)">
+                <button ON-CLICK="saveData()">저장</button>
+                <select id="jsonFiles">
+                    <option value="">-- 파일 선택 --</option>
+                </select>
+                <button ON-CLICK="loadData()">불러오기</button>
+            </div>
+        </div>
+        
+        <div id="controls">
+            <button ON-CLICK="addRow()">행 추가</button>
+            <button ON-CLICK="addColumn()">열 추가</button>
+        </div>
+        
+        <div id="excel"></div>
+        
+        <!-- Tabulator JS CDN 링크 -->
+        <script src="https://unpkg.com/tabulator-tables@5.4.4/dist/js/tabulator.min.js"></script>
+        <script>
+            // Tabulator 테이블 초기화
+            let table = new Tabulator("#excel", {
+                data: [], // 초기 데이터 빈 배열
+                layout:"fitColumns",
+                responsiveLayout:"hide",
+                addRowPos:"top",
+                history:true,
+                pagination:"local",
+                paginationSize:10,
+                movableColumns:true,
+                resizableRows:true,
+                columnSorting:true,
+                columns:[
+                    {title:"A", field:"A", editor:"input"},
+                    {title:"B", field:"B", editor:"input"},
+                    {title:"C", field:"C", editor:"input"},
+                ],
+                cellEdited:function(cell){
+                    // 셀이 편집될 때마다 호출됩니다. 필요 시 추가 기능 구현 가능
+                },
+            });
+            // 페이지 로드 시 JSON 파일 목록 가져오기
+            window.ON-LOAD = async function() {
+                await fetchJsonFileList();
+            };
+            async function fetchJsonFileList() {
+                try {
+                    const response = await fetch("/list_json");
+                    const files = await response.json();
+                    const select = document.getElementById('jsonFiles');
+                    // 기존 옵션 제거 (초기 옵션만 남김)
+                    select.innerHTML = '<option value="">-- 파일 선택 --</option>';
+                    files.forEach(file => {
+                        const option = document.createElement('option');
+                        option.value = file;
+                        option.text = file;
+                        select.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error("JSON 파일 목록을 가져오는 데 실패했습니다:", error);
+                }
+            }
+            
+            async function saveData() {
+                const headers = table.getColumns().map(col => col.getDefinition().title);
+                const data = table.getData();  // Tabulator의 데이터 가져오기
+                const payload = { headers, data };
+                const filenameInput = document.getElementById("filenameInput").value.trim();
+                const url = filenameInput ? `/save?filename=${encodeURIComponent(filenameInput)}` : "/save";
+                
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    if (result.link) {
+                        alert(`저장되었습니다: ${window.location.origin}${result.link}`);
+                        
+                        // 새 파일을 드롭다운에 추가
+                        const select = document.getElementById('jsonFiles');
+                        const filename = result.link.split('/').pop();
+                        const option = document.createElement('option');
+                        option.value = filename;
+                        option.text = filename;
+                        select.appendChild(option);
+                    } else {
+                        alert("저장에 실패했습니다. 다시 시도해 주세요.");
+                    }
+                } catch (error) {
+                    console.error("데이터 저장 중 오류 발생:", error);
+                    alert("저장에 실패했습니다. 다시 시도해 주세요.");
+                }
+            }
+            async function loadData() {
+                const select = document.getElementById('jsonFiles');
+                const filename = select.value;
+                if (!filename) {
+                    alert("불러올 파일을 선택해주세요.");
+                    return;
+                }
+                try {
+                    const response = await fetch(`/json/${filename}`);
+                    if (response.ok) {
+                        const list_of_dicts = await response.json();
+                        if (list_of_dicts.length === 0) {
+                            alert("빈 파일입니다.");
+                            return;
+                        }
+                        const headers = Object.keys(list_of_dicts[0]);
+                        const data = list_of_dicts.map(obj => {
+                            let row = {};
+                            headers.forEach(header => {
+                                row[header] = obj[header];
+                            });
+                            return row;
+                        });
+                        // Tabulator의 열 헤더 설정
+                        table.setColumns(headers.map(header => ({title: header, field: header, editor: "input"})));
+                        // Tabulator에 데이터 로드
+                        table.setData(data);
+                        alert("데이터를 성공적으로 불러왔습니다.");
+                    } else {
+                        alert("파일을 불러오는 데 실패했습니다.");
+                    }
+                } catch (error) {
+                    console.error("데이터 불러오는 중 오류 발생:", error);
+                    alert("파일을 불러오는 데 실패했습니다.");
+                }
+            }
+            function addRow() {
+                table.addRow({});
+            }
+            function addColumn() {
+                const currentColCount = table.getColumns().length;
+                const newColTitle = `Column ${currentColCount + 1}`;
+                const newField = `Col${currentColCount + 1}`;
+                table.addColumn({title: newColTitle, field: newField, editor: "input"});
+            }
+        </script>
+    </body>
+    </html>
